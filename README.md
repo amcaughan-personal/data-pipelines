@@ -11,8 +11,13 @@ work scales onto spot nodes and back to nothing.
 ## How it fits with eks-platform
 
 - **eks-platform** runs the cluster, Airflow itself and the shared add-ons, and onboards this
-  repo as a tenant: a namespace with a budget, an Argo CD project limited to this repo, and
-  Pod Identity links for this repo's pod roles (`gitops/tenants/data-pipelines/`).
+  repo as a tenant with one file, `gitops/tenants/data-pipelines/values.yaml`: a namespace
+  with a budget and default pod sizes, an Argo CD project limited to this repo's `k8s/`
+  folder and that namespace, traffic into the namespace only from inside it, and Pod
+  Identity links from its service accounts to this repo's roles.
+- **Pod roles** must be named `data-pipelines-pod-<name>` (this repo's CI already creates
+  roles only with its own prefix and permissions boundary). eks-platform's CI role may hand
+  any such role to pods, so no personal-infra change is needed per role.
 - **This repo** owns the work: pipeline definitions, DAGs, container images, and its own AWS
   resources (buckets, Glue databases, the IAM roles its pods use).
 - Airflow pulls the DAGs from here with git-sync; anything else this repo runs on the cluster
@@ -45,7 +50,9 @@ infra/         S3 buckets, Glue databases, pod roles named data-pipelines-pod-* 
 
 ### On the cluster
 - [ ] eks-platform: Airflow on Argo CD (KubernetesExecutor, git-sync from `dags/`, Postgres, task logs to S3), built on kind first
-- [ ] eks-platform: onboard this repo (`gitops/tenants/data-pipelines/values.yaml`)
+- [ ] Decide where task pods run: in this repo's namespace (so they count against its budget and get its pod roles), via Airflow's pod template
+- [ ] Decide how Airflow reads live task logs: the tenant's network policy blocks traffic into the namespace from Airflow's, so either the tenant chart allows Airflow's namespace in, or logs come only from S3
+- [ ] eks-platform: onboard this repo: `gitops/tenants/data-pipelines/values.yaml` with its repo, `k8s` path, budget, and `podRoles` (e.g. `tasks: data-pipelines-pod-tasks`)
 - [ ] Run payments end to end on kind, then once on EKS
 
 ### More pipelines
