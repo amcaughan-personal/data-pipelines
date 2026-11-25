@@ -18,6 +18,10 @@ work scales onto spot nodes and back to nothing.
 - **Pod roles** must be named `data-pipelines-pod-<name>` (this repo's CI already creates
   roles only with its own prefix and permissions boundary). eks-platform's CI role may hand
   any such role to pods, so no personal-infra change is needed per role.
+- **Each pod role trusts only its own pods.** Pod Identity tags every credential request with
+  the cluster, namespace and service account; each role's trust policy requires
+  `kubernetes-namespace = data-pipelines` and its own `kubernetes-service-account`, so the role
+  refuses any other pods, even ones the platform linked it to by mistake.
 - **This repo** owns the work: pipeline definitions, DAGs, container images, and its own AWS
   resources (buckets, Glue databases, the IAM roles its pods use).
 - Airflow pulls the DAGs from here with git-sync; anything else this repo runs on the cluster
@@ -40,7 +44,7 @@ infra/         S3 buckets, Glue databases, pod roles named data-pipelines-pod-* 
 - [ ] Terragrunt layout like the other repos (`root.hcl`, `.tool-versions`, CI plan, drift check)
 - [ ] personal-infra: plan and apply roles for this repo, its `infra-*` environments, required checks
 - [ ] ECR repositories for the `ingest` and `dbt` images, and CI that builds and pushes them
-- [ ] `infra/`: the raw bucket, Glue databases, and the pod role `data-pipelines-pod-tasks` (S3, Glue, Athena)
+- [ ] `infra/`: the raw bucket, Glue databases, and the pod role `data-pipelines-pod-tasks` (S3, Glue, Athena), trusting only `pods.eks.amazonaws.com` with `kubernetes-namespace = data-pipelines` and `kubernetes-service-account = tasks`
 
 ### The first pipeline (payments, hourly)
 - [ ] `pipelines/payments.yaml`: the API spec, schedule and models
